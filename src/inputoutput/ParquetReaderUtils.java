@@ -26,6 +26,7 @@ import org.apache.parquet.filter2.predicate.FilterApi;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
+import org.apache.parquet.filter2.predicate.Operators.LongColumn;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -138,6 +139,54 @@ public class ParquetReaderUtils {
               }
               simpleGroups.add(simpleGroup);
           }
+      }       
+      reader.close();
+      return new Parquet(simpleGroups, fields);
+	}
+	
+	/**
+	 * This method filters the parquet based on a List of column values for a particular column,
+     * using FilterPredicate and options for RecordReader.
+     * Using the same technique we can have a list of columns and build our predicates over it.
+	 * @param filePath
+	 * @param columnName
+	 * @param columnValues
+	 * @return
+	 * @throws Exception
+	 * @throws IOException
+	 */
+	public static Parquet getFilteredParquet(String filePath, String columnName, List<Long> columnValues) throws Exception, IOException {
+	  //Type of column we are filtering on.
+	  LongColumn column = FilterApi.longColumn(columnName);
+	  
+	  //building Filter predicate.
+	  FilterPredicate finalFilterPredicate = FilterApi.eq(column, columnValues.get(0));
+      for(int index = 1; index < columnValues.size(); index++) {
+        finalFilterPredicate = FilterApi.or(finalFilterPredicate, FilterApi.eq(column, columnValues.get(index)));
+      }
+	  
+      FilterCompat.Filter recordFilter = FilterCompat.get(finalFilterPredicate);
+      
+	  ParquetReadOptions options = ParquetReadOptions.builder().withRecordFilter(recordFilter).build();
+      
+	  //Building ParquetFileReader with Filter.
+	  ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(new Path(filePath), new Configuration()), options);
+      
+	  //Reading reader with Filtered Rows and building a parquet.
+	  List<SimpleGroup> simpleGroups = new ArrayList<>();
+      MessageType schema = reader.getFooter().getFileMetaData().getSchema();
+      List<Type> fields = schema.getFields();
+      PageReadStore pages;
+      while ((pages = reader.readNextRowGroup()) != null) {
+          long rows = pages.getRowCount();
+          MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+          RecordReader recordFilteredRecords = columnIO.getRecordReader(pages, new GroupRecordConverter(schema), recordFilter);
+          for(int i = 0; i < rows; i++) {
+            SimpleGroup simpleGroup = (SimpleGroup) recordFilteredRecords.read();
+            if(simpleGroup != null) {
+              simpleGroups.add(simpleGroup);
+            }
+        }
       }       
       reader.close();
       return new Parquet(simpleGroups, fields);
