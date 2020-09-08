@@ -193,6 +193,117 @@ public class ParquetReaderUtils {
 	}
 	
 	/**
+     * This method filters the parquet based on 'two' lists of column values for 'two' columns of type 'LONG' in java,
+     * using FilterPredicate and options for RecordReader.
+     * Using the same technique we can have a list of columns and build our predicates over it.
+     * @param filePath
+     * @param columnName1
+     * @param columnName2
+     * @param columnValues1
+     * @param columnValues2
+     * @return logical representation of Parquet.
+     * @throws Exception
+     * @throws IOException
+     */
+    public static Parquet getFilteredParquet(String filePath, String columnName1, String columnName2, List<Long> columnValues1, List<Long> columnValues2) throws Exception, IOException {
+      //Type of column we are filtering on.
+      LongColumn column1 = FilterApi.longColumn(columnName1);
+      LongColumn column2 = FilterApi.longColumn(columnName2);
+      
+      //building Filter predicate.
+      FilterPredicate filterPredicate1 = FilterApi.eq(column1, columnValues1.get(0));
+      FilterPredicate filterPredicate2 = FilterApi.eq(column2, columnValues2.get(0));
+      FilterPredicate finalFilterPredicate = FilterApi.and(filterPredicate1, filterPredicate2);
+      for (int index = 1; index < columnValues1.size(); index++) {
+        filterPredicate1 = FilterApi.eq(column1, columnValues1.get(index));
+        filterPredicate2 = FilterApi.eq(column2, columnValues2.get(index));
+        finalFilterPredicate = FilterApi.or(finalFilterPredicate, FilterApi.and(filterPredicate1, filterPredicate2));
+      }
+      
+      FilterCompat.Filter recordFilter = FilterCompat.get(finalFilterPredicate);
+      
+      ParquetReadOptions options = ParquetReadOptions.builder().withRecordFilter(recordFilter).build();
+      
+      //Building ParquetFileReader with Filter.
+      ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(new Path(filePath), new Configuration()), options);
+      
+      //Reading reader with Filtered Rows and building a parquet.
+      List<SimpleGroup> simpleGroups = new ArrayList<>();
+      MessageType schema = reader.getFooter().getFileMetaData().getSchema();
+      List<Type> fields = schema.getFields();
+      PageReadStore pages;
+      while ((pages = reader.readNextRowGroup()) != null) {
+          long rows = pages.getRowCount();
+          MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+          RecordReader recordFilteredRecords = columnIO.getRecordReader(pages, new GroupRecordConverter(schema), recordFilter);
+          for(int i = 0; i < rows; i++) {
+            SimpleGroup simpleGroup = (SimpleGroup) recordFilteredRecords.read();
+            if(simpleGroup != null) {
+              simpleGroups.add(simpleGroup);
+            }
+        }
+      }       
+      reader.close();
+      return new Parquet(simpleGroups, fields);
+    }
+	
+    /**
+     * This method filters the parquet based on 'two' lists of column values for 'two' columns of type 'LONG' in java,
+     * using FilterPredicate and options for RecordReader.
+     * Using the same technique we can have a list of columns and build our predicates over it.
+     * @param filePath
+     * @param columnName1
+     * @param columnName2
+     * @param columnValues1
+     * @param columnValues2
+     * @return logical representation of Parquet.
+     * @throws Exception
+     * @throws IOException
+     */
+    public static Parquet getFilteredParquetFromStringValues(String filePath, String columnName1, String columnName2, List<String> columnValues1, List<String> columnValues2) throws Exception, IOException {
+      //Type of column we are filtering on.
+      BinaryColumn column1 = FilterApi.binaryColumn(columnName1);
+      BinaryColumn column2 = FilterApi.binaryColumn(columnName2);
+      
+      //building Filter predicate.
+      FilterPredicate filterPredicate1 = FilterApi.eq(column1, Binary.fromString(columnValues1.get(0)));
+      FilterPredicate filterPredicate2 = FilterApi.eq(column2, Binary.fromString(columnValues2.get(0)));
+      FilterPredicate finalFilterPredicate = FilterApi.and(filterPredicate1, filterPredicate2);
+      for (int index = 1; index < columnValues1.size(); index++) {
+        filterPredicate1 = FilterApi.eq(column1, Binary.fromString(columnValues1.get(index)));
+        filterPredicate2 = FilterApi.eq(column2, Binary.fromString(columnValues2.get(index)));
+        finalFilterPredicate = FilterApi.or(finalFilterPredicate, FilterApi.and(filterPredicate1, filterPredicate2));
+      }
+      
+      FilterCompat.Filter recordFilter = FilterCompat.get(finalFilterPredicate);
+      
+      ParquetReadOptions options = ParquetReadOptions.builder().withRecordFilter(recordFilter).build();
+      
+      //Building ParquetFileReader with Filter.
+      ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(new Path(filePath), new Configuration()), options);
+      
+      //Reading reader with Filtered Rows and building a parquet.
+      List<SimpleGroup> simpleGroups = new ArrayList<>();
+      MessageType schema = reader.getFooter().getFileMetaData().getSchema();
+      List<Type> fields = schema.getFields();
+      PageReadStore pages;
+      while ((pages = reader.readNextRowGroup()) != null) {
+          long rows = pages.getRowCount();
+          MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+          RecordReader recordFilteredRecords = columnIO.getRecordReader(pages, new GroupRecordConverter(schema), recordFilter);
+          for(int i = 0; i < rows; i++) {
+            SimpleGroup simpleGroup = (SimpleGroup) recordFilteredRecords.read();
+            if(simpleGroup != null) {
+              simpleGroups.add(simpleGroup);
+            }
+        }
+      }       
+      reader.close();
+      return new Parquet(simpleGroups, fields);
+    }
+    
+	
+	/**
 	 * This method filters the parquet based on a List of column values for a particular column,
 	 * using FilterPredicate and options for RecordReader.
 	 * Using the same technique we can have a list of columns and build our predicates over it.

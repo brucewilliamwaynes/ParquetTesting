@@ -15,23 +15,18 @@ import model.Parquet;
  */
 public class ParquetDriver {
 
-	public static void main(String[] args) throws Exception {
-//		String inputURL = "/Users/1022773/Documents/LRR/sprintRelatedDocuments/resources/OOPT-OGT-305.01/procurementcalendartimes.parquet";
-		String inputURL = "/Users/1022773/Desktop/masterdata.parquet";
-		String outputURL = "/Users/1022773/Desktop/masterdata.text";
-//		List<String> listOfColumns = new ArrayList<String>();
-//		listOfColumns.add("item");
-//		listOfColumns.add("qty");
-//		Parquet processskuParquetColumn = ParquetReaderUtils.getColumnSpecificParquetDataWithoutJar(inputURL, listOfColumns);
-//		Parquet processskuParquet = ParquetReaderUtils.getParquetData(inputURL);
-//		Parquet processskuFilteredParquet = ParquetReaderUtils.getFilteredParquetData(inputURL,"P_EXTERNAL_CODE","OOPT-DCR100.01-1");
-//		Parquet processskuFilteredParquet = ParquetReaderUtils.getFilteredParquetUsingOptions(inputURL,"P_EXTERNAL_CODE","OOPT-DCR100.01-1");
-		List<Long> listOfValues = new ArrayList<Long>();
-		listOfValues.add((long)2767205770L);
-		listOfValues.add((long)2767205772L);
-//		Parquet processskuFilteredParquet = ParquetReaderUtils.<Long>getFilteredParquetUsingOptions(inputURL,"PP_PUG_ID", listOfValues);
-		Parquet filteredParquet = ParquetReaderUtils.getFilteredParquet(inputURL, "PP_PUG_ID", listOfValues);
-		ParquetPublisherUtils.storeParquetData(filteredParquet, outputURL);
-	}
+  public static void main(String[] args) throws Exception {
+    String inputURL = "/Users/1022773/Desktop/masterdata.parquet";
+    String outputURL = "/Users/1022773/Desktop/masterdata.text";
+
+    List<Long> listOfValues = new ArrayList<Long>();
+    listOfValues.add((long) 2767205770L);
+    listOfValues.add((long) 2767205778L);
+    Parquet filteredParquet = ParquetReaderUtils.getFilteredParquet(inputURL, "PP_PUG_ID", listOfValues);
+//  Parquet filteredParquet = ParquetReaderUtils.getFilteredParquet(inputURL, columnName1, columnName2, columnValues1<Long>, columnValues2<Long>);
+//  Parquet filteredParquet = ParquetReaderUtils.getFilteredParquetFromStringValues(inputURL, columnName1, columnName2, columnValues1<String>,
+//  columnValues2<String>);
+    ParquetPublisherUtils.storeParquetData(filteredParquet, outputURL);
+  }
 
 }
